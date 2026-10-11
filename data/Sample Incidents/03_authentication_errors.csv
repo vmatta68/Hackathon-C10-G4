@@ -1,0 +1,9 @@
+timestamp,service,level,message
+2026-10-10T12:15:00Z,auth-service,INFO,Authentication request received
+2026-10-10T12:15:02Z,auth-service,WARN,Invalid credential response returned
+2026-10-10T12:15:04Z,auth-service,ERROR,Token validation failed: signature verification error
+2026-10-10T12:15:07Z,api-gateway,WARN,HTTP 401 rate above normal baseline
+2026-10-10T12:15:12Z,auth-service,ERROR,Token validation failed: issuer mismatch
+2026-10-10T12:15:18Z,auth-service,WARN,Repeated authentication failures observed within a short interval
+2026-10-10T12:15:25Z,api-gateway,INFO,Health check passed
+2026-10-10T12:16:00Z,auth-service,ERROR,Token validation failed: token expired

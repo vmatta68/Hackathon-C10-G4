@@ -223,10 +223,96 @@ Schema:
     )
 
 
-def draft_ticket(classification: dict, diagnosis: dict, remediation: dict, runbook: dict) -> dict:
+def draft_ticket(
+    classification: dict,
+    diagnosis: dict,
+    remediation: dict,
+    runbook: dict,
+) -> dict:
+    """Create a concise Jira ticket using a limited evidence payload."""
+
+    hypotheses = diagnosis.get("root_cause_hypotheses", [])[:2]
+
+    checklist = runbook.get("checklist", [])
+    compact_checklist = [
+        {
+            "phase": item.get("phase", ""),
+            "task": item.get("task", ""),
+        }
+        for item in checklist[:3]
+    ]
+
+    # Pass only the information needed to draft the ticket.
+    compact_payload = {
+        "classification": {
+            "service": classification.get("service", "unknown"),
+            "severity": classification.get("severity", "UNKNOWN"),
+            "error_patterns": classification.get("error_patterns", [])[:5],
+            "affected_components": classification.get(
+                "affected_components", []
+            )[:5],
+            "missing_information": classification.get(
+                "missing_information", []
+            )[:4],
+        },
+        "diagnosis": {
+            "summary": diagnosis.get("summary", ""),
+            "impact": diagnosis.get("impact", ""),
+            "root_cause_hypotheses": [
+                {
+                    "cause": h.get("cause", ""),
+                    "evidence": h.get("evidence", [])[:2],
+                    "confirmed": h.get("confirmed", False),
+                }
+                for h in hypotheses
+            ],
+            "missing_information": diagnosis.get(
+                "missing_information", []
+            )[:4],
+        },
+        "remediation": {
+            "actions": [
+                {
+                    "action": a.get("action", ""),
+                    "verification": a.get("verification", ""),
+                }
+                for a in remediation.get("actions", [])[:3]
+            ],
+            "avoid": remediation.get("avoid", [])[:2],
+        },
+        "runbook": {
+            "checklist": compact_checklist,
+            "communications_summary": runbook.get(
+                "communications_summary", ""
+            ),
+        },
+    }
+
     return invoke_json(
-        """Draft a Jira issue for an incident. Include clear acceptance/verification criteria.
-Schema:
-{"summary":"string","description":"string","priority":"Highest|High|Medium|Low|Lowest","labels":["incident-analysis","genai"],"verification_criteria":["string"]}""",
-        {"classification": classification, "diagnosis": diagnosis, "remediation": remediation, "runbook": runbook},
+        """You are a concise DevOps incident ticket writer.
+
+Return exactly one valid JSON object with this schema:
+{
+  "summary": "string",
+  "description": "string",
+  "priority": "Highest|High|Medium|Low|Lowest",
+  "labels": ["string"],
+  "verification_criteria": ["string"]
+}
+
+STRICT OUTPUT LIMITS:
+1. Summary: maximum 12 words.
+2. Description: maximum 80 words, plain text.
+3. Labels: maximum 2.
+4. Verification criteria: maximum 3 items.
+5. Each verification criterion: maximum 15 words.
+6. Use only facts supplied in the input.
+7. Clearly distinguish hypotheses from confirmed causes.
+8. State when impact or other information is unknown.
+9. Do not repeat entire log entries or the complete remediation checklist.
+10. Do not use Markdown fences or explanations outside the JSON.
+11. Keep the entire response concise enough to fit the output limit.
+""",
+        compact_payload,
     )
+

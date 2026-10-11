@@ -1,0 +1,7 @@
+timestamp,service,level,message
+,checkout-service,WARN,Request latency elevated
+2026-10-10T13:02:11Z,checkout-service,ERROR,Request timed out
+,unknown-service,INFO,Retry attempt completed
+2026-10-10T13:02:19Z,checkout-service,WARN,Retry count increased
+2026-10-10T13:04:00Z,dependency-proxy,ERROR,Upstream returned an unspecified error
+2026-10-10T13:04:10Z,checkout-service,INFO,Health endpoint returned success

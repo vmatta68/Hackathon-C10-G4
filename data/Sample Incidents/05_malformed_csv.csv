@@ -1,0 +1,4 @@
+timestamp,service,level,message
+2026-10-10T14:00:00Z,inventory-service,INFO,Service started
+2026-10-10T14:01:00Z,inventory-service,ERROR,Unexpected extra column,EXTRA_VALUE
+2026-10-10T14:02:00Z,inventory-service,WARN,Retry requested

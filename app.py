@@ -30,7 +30,7 @@ def analyze(file_obj, extra_context: str):
         df = _read_upload(file_obj)
         
         summary = summarize_logs(df)
-        print(f"Log summary: {summary}")
+        
         # Keep the LLM input manageable for a limited credit balance.
         summary["records_for_analysis"] = (
             summary.get("records_for_analysis", [])[:40]
@@ -59,8 +59,24 @@ def analyze(file_obj, extra_context: str):
             f"Service: **{result.get('service', 'unknown')}**"
         )
         return headline, pretty, result
+    
+    except pd.errors.ParserError as exc:
+        return (
+            "**CSV validation error:** The uploaded file contains "
+            "an invalid CSV row. Please check that every row has "
+            "the same number of columns as the header and that "
+            "fields containing commas are correctly quoted.\n\n"
+            f"**Technical details:** {exc}",
+            "No result generated.",
+            None,
+        )
+
     except Exception as exc:
-        return f"**Analysis failed:** {type(exc).__name__}: {exc}", "No result generated.", None
+        return (
+            f"**Analysis failed:** {type(exc).__name__}: {exc}",
+            "No result generated.",
+            None,
+        )
 
 
 def dispatch_actions(result, approved: bool):

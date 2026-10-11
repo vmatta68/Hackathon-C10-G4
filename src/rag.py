@@ -9,19 +9,56 @@ def _load_chunks(runbook_dir: str | Path) -> list[dict[str, str]]:
     root = Path(runbook_dir)
     root.mkdir(parents=True, exist_ok=True)
     chunks: list[dict[str, str]] = []
+
     for path in sorted(root.glob("*")):
-        if path.suffix.lower() not in {".txt", ".md"} or not path.is_file():
+        if path.suffix.lower() not in {".txt", ".md"}:
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        # Simple paragraph/character chunking suitable for a small hackathon corpus.
-        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-        if not paragraphs and text.strip():
-            paragraphs = [text.strip()]
-        for idx, para in enumerate(paragraphs):
-            for start in range(0, len(para), 1200):
-                chunk = para[start:start + 1200].strip()
+        if not path.is_file():
+            continue
+
+        text = path.read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        paragraphs = [
+            p.strip()
+            for p in text.split("\n\n")
+            if p.strip()
+        ]
+
+        pending_headings = []
+        chunk_id = 0
+
+        for paragraph in paragraphs:
+            lines = paragraph.splitlines()
+
+            # Keep headings with the content that follows them.
+            is_heading_only = all(
+                line.strip().startswith("#")
+                for line in lines
+            )
+
+            if is_heading_only:
+                pending_headings.append(paragraph)
+                continue
+
+            combined = "\n".join(
+                pending_headings + [paragraph]
+            ).strip()
+            pending_headings = []
+
+            for start in range(0, len(combined), 1200):
+                chunk = combined[start:start + 1200].strip()
+
                 if chunk:
-                    chunks.append({"source": path.name, "chunk_id": str(idx), "text": chunk})
+                    chunks.append({
+                        "source": path.name,
+                        "chunk_id": str(chunk_id),
+                        "text": chunk,
+                    })
+                    chunk_id += 1
+
     return chunks
 
 

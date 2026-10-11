@@ -7,3 +7,4 @@ timestamp,service,level,message
 2026-10-10T10:03:28Z,payment-service,ERROR,Database connection timeout after 3000ms
 2026-10-10T10:04:01Z,api-gateway,WARN,HTTP 503 rate increased above baseline
 2026-10-10T10:04:22Z,payment-service,INFO,Health check still responding
+2026-10-10T10:03:16Z,order-service,ERROR,Severity Several payment requests are failing and the service is unavailable

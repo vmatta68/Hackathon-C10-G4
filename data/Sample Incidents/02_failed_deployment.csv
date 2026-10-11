@@ -1,0 +1,9 @@
+timestamp,service,level,message
+2026-10-10T11:00:00Z,orders-service,INFO,Deployment started for release 5.8.0
+2026-10-10T11:01:12Z,orders-service,INFO,Application process started
+2026-10-10T11:01:43Z,orders-service,WARN,Readiness probe failed for 3 consecutive checks
+2026-10-10T11:02:05Z,orders-service,ERROR,Database migration check failed: expected column not found
+2026-10-10T11:02:09Z,api-gateway,ERROR,Upstream orders-service returned HTTP 502
+2026-10-10T11:02:30Z,orders-service,ERROR,Request handler initialization incomplete
+2026-10-10T11:03:01Z,orders-service,WARN,Error rate above deployment baseline
+2026-10-10T11:04:10Z,release-controller,INFO,Deployment remains in progress; automatic rollback not configured
