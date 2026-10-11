@@ -206,10 +206,34 @@ Schema:
 
 def synthesize_runbook(classification: dict, diagnosis: dict, remediation: dict, rag_context: list[dict]) -> dict:
     return invoke_json(
-        """Create an actionable incident checklist for an on-call engineer.
-Schema:
-{"checklist":[{"phase":"Triage|Investigate|Mitigate|Verify|Communicate","task":"string","done_when":"string"}],"rollback_considerations":["string"],"communications_summary":"string"}
-Do not invent runbook citations. Identify steps as recommendations, not completed actions.""",
+            """Create an actionable incident checklist for an on-call engineer.
+
+    Return exactly FIVE checklist items, in this order:
+    1. Triage
+    2. Investigate
+    3. Mitigate
+    4. Verify
+    5. Communicate
+
+    Each item must have:
+    - phase: the exact phase name from the ordered list above
+    - task: a specific, actionable task relevant to this incident
+    - done_when: a concrete condition that confirms the task is complete
+
+    Rules:
+    - Return exactly one checklist item for each phase.
+    - Use the supplied classification, diagnosis, remediation, and runbook context.
+    - Do not invent log events, metrics, root causes, runbook content, or citations.
+    - Treat suspected root causes as unconfirmed unless supported by evidence.
+    - For Mitigate, recommend an approved, evidence-based action or escalation.
+    Require human approval before any risky or state-changing operation.
+    - For Verify, specify how to assess recovery using relevant metrics or evidence.
+    - For Communicate, specify what incident status, impact, uncertainties, and
+    next steps should be communicated.
+    - Do not claim that any task has already been performed.
+    - Return valid JSON only, using this schema:
+    {"checklist":[{"phase":"Triage|Investigate|Mitigate|Verify|Communicate","task":"string","done_when":"string"}],"rollback_considerations":["string"],"communications_summary":"string"}""",
+
         {"classification": classification, "diagnosis": diagnosis, "remediation": remediation, "runbook_context": rag_context},
     )
 

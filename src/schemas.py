@@ -4,6 +4,7 @@ from typing import Any, TypedDict
 
 
 class IncidentState(TypedDict, total=False):
+    incident_id: str
     log_summary: dict[str, Any]
     rag_context: list[dict[str, str]]
     extra_context: str

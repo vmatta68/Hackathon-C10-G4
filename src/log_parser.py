@@ -64,7 +64,33 @@ def load_and_normalize_csv(path: str | Path) -> pd.DataFrame:
     return df
 
 
+def sort_logs_by_timestamp(df: pd.DataFrame) -> pd.DataFrame:
+    """Sort log records chronologically; place missing or invalid timestamps last."""
+    if df.empty or "timestamp" not in df.columns:
+        return df.copy()
+
+    out = df.copy()
+    out["_source_order"] = range(len(out))
+
+    out["_parsed_timestamp"] = pd.to_datetime(
+        out["timestamp"],
+        errors="coerce",
+        utc=True,
+    )
+
+    out = out.sort_values(
+        by=["_parsed_timestamp", "_source_order"],
+        na_position="last",
+    )
+
+    return (
+        out.drop(columns=["_source_order", "_parsed_timestamp"])
+        .reset_index(drop=True)
+    )
+
+
 def summarize_logs(df: pd.DataFrame) -> dict:
+    df = sort_logs_by_timestamp(df)
     settings = get_settings()
     records = df.head(settings.max_log_rows).to_dict(orient="records")
     levels = df["level"].value_counts().to_dict()

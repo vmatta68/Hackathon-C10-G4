@@ -28,22 +28,12 @@ def analyze(file_obj, extra_context: str):
     try:
         settings = get_settings()
         df = _read_upload(file_obj)
-        
         summary = summarize_logs(df)
-        
-        # Keep the LLM input manageable for a limited credit balance.
-        summary["records_for_analysis"] = (
-            summary.get("records_for_analysis", [])[:40]
-        )
-        summary["error_examples"] = (
-            summary.get("error_examples", [])[:20]
-        )
-        summary["query"] = summary.get("query", "")[:3000]
 
         rag_context = retrieve_runbook_context(
             query=summary["query"],
             runbook_dir=ROOT / "data" / "runbooks",
-            top_k=min(settings.rag_top_k, 2),
+            top_k=settings.rag_top_k,
         )
 
         result = run_incident_workflow(
@@ -51,31 +41,81 @@ def analyze(file_obj, extra_context: str):
             rag_context=rag_context,
             extra_context=(extra_context or "").strip(),
         )
+
+        # Extract tracing metadata; keep it separate from the incident report.
+        trace_events = result.pop("execution_trace", [])
+        trace_json = json.dumps(
+            trace_events, indent=2, ensure_ascii=False
+        )
+
+        workflow_status = result.pop(
+            "workflow_status", "completed"
+        )
+
+        if workflow_status != "completed":
+            error_type = result.get(
+                "error_type", "WorkflowError"
+            )
+            error_message = result.get(
+                "error_message",
+                "The workflow did not complete.",
+            )
+
+            return (
+                f"**Analysis failed:** {error_type}. {error_message}",
+                "No complete incident report generated.",
+                None,
+                trace_json,
+            )
+
+        # Remove internal workflow metadata from the incident report.
+        result.pop("error_type", None)
+        result.pop("error_message", None)
+
         result["input_summary"] = summary
         result["retrieved_runbooks"] = rag_context
-        pretty = json.dumps(result, indent=2, ensure_ascii=False)
+
+        pretty = json.dumps(
+            result, indent=2, ensure_ascii=False
+        )
+
         headline = (
-            f"**Incident analysis complete** · Severity: **{result.get('severity', 'UNKNOWN')}** · "
+            f"**Incident analysis complete** · "
+            f"Severity: **{result.get('severity', 'UNKNOWN')}** · "
             f"Service: **{result.get('service', 'unknown')}**"
         )
-        return headline, pretty, result
-    
+
+        return headline, pretty, result, trace_json
+
     except pd.errors.ParserError as exc:
         return (
             "**CSV validation error:** The uploaded file contains "
-            "an invalid CSV row. Please check that every row has "
-            "the same number of columns as the header and that "
-            "fields containing commas are correctly quoted.\n\n"
+            "an invalid CSV row. Please check that each row has "
+            "the expected number of columns and that fields "
+            "containing commas are quoted correctly.\n\n"
             f"**Technical details:** {exc}",
             "No result generated.",
             None,
+            "[]",
         )
+
+    except ValueError as exc:
+        if str(exc) == "CSV contains no data rows.":
+            message = (
+                "**CSV validation error:** The uploaded file "
+                "contains no data rows."
+            )
+        else:
+            message = f"**Analysis failed:** ValueError: {exc}"
+
+        return message, "No result generated.", None, "[]"
 
     except Exception as exc:
         return (
             f"**Analysis failed:** {type(exc).__name__}: {exc}",
             "No result generated.",
             None,
+            "[]",
         )
 
 
@@ -124,15 +164,30 @@ with gr.Blocks(title="Multi-agent DevOps Incident Analysis Suite") as demo:
             placeholder="e.g., deployment occurred shortly before errors began",
             lines=3,
         )
+    
+    
     analyze_btn = gr.Button("Analyze incident", variant="primary")
+
     status = gr.Markdown()
-    report = gr.Code(label="Structured incident report (JSON)", language="json")
+
+    report = gr.Code(
+        label="Structured incident report (JSON)",
+        language="json",
+    )
+
+    trace_box = gr.Code(
+        label="LangGraph execution trace (JSON)",
+        language="json",
+        value="[]",
+    )
+
     result_state = gr.State(None)
 
+  
     analyze_btn.click(
         fn=analyze,
         inputs=[upload, extra],
-        outputs=[status, report, result_state],
+        outputs=[status, report, result_state, trace_box],
     )
 
     gr.Markdown("## External actions")
